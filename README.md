@@ -1,5 +1,7 @@
 # Sistema de Autenticación y Autorización con NestJS
 
+![Logo del Proyecto](src/common/images/header-readme.png)
+
 ## Descripción del Proyecto
 
 Este proyecto implementa un sistema de autenticación y autorización basado en NestJS, permitiendo a los usuarios registrarse, iniciar sesión y gestionar sus sesiones de manera segura mediante tokens JWT. La implementación está completamente en español, facilitando su comprensión y uso para desarrolladores hispanohablantes.
