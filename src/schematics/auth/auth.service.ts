@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import 'dotenv/config';
 import { ERRORS } from 'src/common/errors/errors-codes';
@@ -27,54 +31,94 @@ export class AuthService {
     email: string;
     sub: number;
   }): Promise<{ access_token: string; refresh_token: string }> {
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
-    const refreshToken = uuidv4();
+    try {
+      const accessToken = this.jwtService.sign(payload, { expiresIn: '1h' });
+      const refreshToken = uuidv4();
 
-    const newRefreshToken = new RefreshToken();
-    newRefreshToken.token = refreshToken;
-    newRefreshToken.userId = payload.sub;
-    newRefreshToken.expiryDate = new Date(
-      new Date().getTime() + 24 * 60 * 60 * 1000,
-    ); // Expires in 1 day
+      const newRefreshToken = new RefreshToken();
+      newRefreshToken.token = refreshToken;
+      newRefreshToken.userId = payload.sub;
+      newRefreshToken.expiryDate = new Date(
+        new Date().getTime() + 24 * 60 * 60 * 1000,
+      ); // Expires in 1 day
 
-    await this.refreshTokenRepository.save(newRefreshToken);
+      await this.refreshTokenRepository.save(newRefreshToken);
 
-    return { access_token: accessToken, refresh_token: refreshToken };
+      return { access_token: accessToken, refresh_token: refreshToken };
+    } catch (error) {
+      throw new BadRequestException({
+        code: ERRORS.SERVER.INTERNAL_ERROR.CODE,
+        message: [
+          `${ERRORS.SERVER.INTERNAL_ERROR.MESSAGE}`,
+          `Details: ${error.message}`,
+        ],
+      });
+    }
   }
 
   private async validateUser(email: string, password: string): Promise<User> {
-    const user = await this.userService.find({
-      where: { email: email },
-    });
+    try {
+      const user = await this.userService.find({
+        where: { email: email },
+      });
 
-    if (
-      !user ||
-      !(await this.passwordHelper.validate(password, user.password))
-    ) {
+      if (
+        !user ||
+        !(await this.passwordHelper.validate(password, user.password))
+      ) {
+        throw new UnauthorizedException({
+          code: ERRORS.AUTHENTICATION.INVALID_CREDENTIALS.CODE,
+          message: ERRORS.AUTHENTICATION.INVALID_CREDENTIALS.MESSAGE,
+        });
+      }
+
+      return user;
+    } catch (error) {
       throw new UnauthorizedException({
         code: ERRORS.AUTHENTICATION.INVALID_CREDENTIALS.CODE,
-        message: ERRORS.AUTHENTICATION.INVALID_CREDENTIALS.MESSAGE,
+        message: [
+          `${ERRORS.AUTHENTICATION.INVALID_CREDENTIALS.MESSAGE}`,
+          `Details: ${error.message}`,
+        ],
       });
     }
-
-    return user;
   }
 
   async register(registerRequestDto: RegisterRequestDto): Promise<UserDTO> {
-    return await this.userService.create(registerRequestDto);
+    try {
+      return await this.userService.create(registerRequestDto);
+    } catch (error) {
+      throw new BadRequestException({
+        code: ERRORS.USER.EMAIL_ALREADY_EXISTS.CODE,
+        message: [
+          `${ERRORS.USER.EMAIL_ALREADY_EXISTS.MESSAGE}`,
+          `Details: ${error.message}`,
+        ],
+      });
+    }
   }
 
   async login(loginRequestDto: LoginRequestDto) {
-    const user = await this.validateUser(
-      loginRequestDto.email,
-      loginRequestDto.password,
-    );
+    try {
+      const user = await this.validateUser(
+        loginRequestDto.email,
+        loginRequestDto.password,
+      );
 
-    const userId = user.id;
-    const payload = { email: loginRequestDto.email, sub: userId };
+      const userId = user.id;
+      const payload = { email: loginRequestDto.email, sub: userId };
 
-    const tokens = await this.generateUserTokens(payload);
+      const tokens = await this.generateUserTokens(payload);
 
-    return tokens;
+      return tokens;
+    } catch (error) {
+      throw new UnauthorizedException({
+        code: ERRORS.AUTHENTICATION.INVALID_CREDENTIALS.CODE,
+        message: [
+          `${ERRORS.AUTHENTICATION.INVALID_CREDENTIALS.MESSAGE}`,
+          `Details: ${error.message}`,
+        ],
+      });
+    }
   }
 }
