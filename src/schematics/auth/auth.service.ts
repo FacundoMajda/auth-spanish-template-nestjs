@@ -28,7 +28,7 @@ export class AuthService {
     });
 
     if (
-      !user &&
+      !user ||
       !(await this.passwordHelper.validate(password, user.password))
     ) {
       throw new UnauthorizedException({
