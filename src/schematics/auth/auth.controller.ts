@@ -57,8 +57,9 @@ export class AuthController {
   })
   async login(
     @Body() loginRequestDto: LoginRequestDto,
-  ): Promise<{ access_token: string }> {
-    const { access_token } = await this.authService.login(loginRequestDto);
-    return { access_token };
+  ): Promise<{ access_token: string; refresh_token: string }> {
+    const { access_token, refresh_token } =
+      await this.authService.login(loginRequestDto);
+    return { access_token, refresh_token };
   }
 }
